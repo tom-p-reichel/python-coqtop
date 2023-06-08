@@ -18,14 +18,22 @@ class REPL():
     def __init__(self,command,*args):
         new_env = os.environ.copy()
         new_env["LD_PRELOAD"] = preload
-        self.proc = subprocess.run([command]+list(args),stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,env=new_env)
-        self.queue = queue.Queue()
+        self.proc = subprocess.Popen([command]+list(args),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,env=new_env)
+        os.set_blocking(self.proc.stdin.fileno(),False)
+        os.set_blocking(self.proc.stdout.fileno(),False)
+        os.set_blocking(self.proc.stderr.fileno(),False)
+        self.in_queue = queue.Queue()
+        self.out_queue = queue.Queue()
 
     def run(self,cmd):
-        self.queue.put(cmd)
+        self.in_queue.put(cmd)
+        self._sync_nonblock()
 
     def _sync_nonblock(self,cmd):
-        pass
+        
         
 
 
