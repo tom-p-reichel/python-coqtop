@@ -4,6 +4,6 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "repltap"  # as it would appear on PyPI
+name = "coqtop"  # as it would appear on PyPI
 version = "0.0.1"
 
