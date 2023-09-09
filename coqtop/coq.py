@@ -9,11 +9,14 @@ from .repl import REPL
 
 class CoqProcess:
         
-    def __init__(self):
+    def __init__(self,verbose=False):
         self.lock = asyncio.Lock()
-        self.p = REPL("coqtop")
+        self.p = REPL("coqtop",verbose=verbose)
         # TODO: make coqprocess optional async too.
         self.p.make_async()
+
+    def close(self):
+        self.p.close()
 
 
     async def run(self, proofscript, return_stderr=False):

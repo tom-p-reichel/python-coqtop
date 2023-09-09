@@ -88,7 +88,8 @@ class REPL():
 
 
      def call(self,text,stderr=False):
-        self.stdinq.append(struct.pack("N",len(text)) + text.encode())
+        text_bytes = text.encode()
+        self.stdinq.append(struct.pack("N",len(text_bytes)) + text_bytes)
         future = self.loop.create_future() if self.is_async else None
         request = REPL.Request(self,future=future)
         self.pendingq.append(request)
@@ -165,7 +166,7 @@ class REPL():
                 chunk = self.stdinq.popleft()
                 self.proc.stdin.write(chunk)
                 if (self.verbose):
-                    sys.stdout.write("<STDIN>\n"+chunk.decode()+"\n</STDIN>\n")
+                    sys.stdout.write("<STDIN>\n"+str(chunk)+"\n</STDIN>\n")
         except BlockingIOError as e:
             if(self.verbose):
                 print("partial chunk write! weird.")
@@ -175,6 +176,10 @@ class REPL():
             self.proc.stdin.flush()
         except BlockingIOError as e:
             pass
+        except BrokenPipeError as e:
+            # i think the process is dead??
+            self.loop.remove_reader(self.proc.stdin)
+            return []
 
         return finished
 
@@ -189,7 +194,19 @@ class REPL():
                     [])
             finished = self._sync_nonblock()
 
+     def close(self):
+         if (self.is_async):
+             self.loop.remove_writer(self.proc.stdin)
+             self.loop.remove_reader(self.proc.stdout)
+             self.loop.remove_reader(self.proc.stderr)
+             for x in self.pendingq:
+                 x.future.set_result((None,None))
 
+         # this usually convinces coqtop to close.
+         self.proc.stdin.close()
+         self.proc.stdout.close()
+         self.proc.stderr.close()
+         self.proc.wait()
 
 if __name__=="__main__":
     """ simple tests """
