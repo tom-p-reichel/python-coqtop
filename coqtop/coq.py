@@ -37,10 +37,6 @@ class CoqProcess:
             thms.update(re.findall(r"^([^\s]+):",cthms, flags=re.MULTILINE))
         return thms
 
-    def kill(self):
-        """ terminate the running coq process """
-        raise NotImplementedError()
-
     async def locate(self,term):
         """ attempt to find the full path of a term """
         out = await self.run(f"Locate {term}.")
@@ -74,7 +70,7 @@ async def test():
     print(await p.locate("or_comm"))
 
 
-async def import_all(exclude=None):
+async def import_all(exclude=None,require_import=False,**kwargs):
     
     searchdir = guess_switch()+"/lib/coq/"
 
@@ -83,18 +79,19 @@ async def import_all(exclude=None):
 
     paths = {".".join(Path(x).relative_to(searchdir).parts[1:])[:-2] for x in glob.glob(searchdir+"/**/*.v",recursive=True)}
     
-    p = await CoqProcess.init()
+    p = CoqProcess(**kwargs)
     
     for x in paths:
         if (x in exclude):
             continue
         try:
-            await asyncio.wait_for(asyncio.shield(p.run(f"Require Import {x}.")),3.0)
+            await asyncio.wait_for(asyncio.shield(p.run(f"Require Import {x}." if require_import else f"Require {x}.")),3.0)
         except asyncio.exceptions.TimeoutError:
             # something's wrong with that.
             exclude.add(x)
+            p.close()
             return await import_all(exclude=exclude)
-
+     
     return (p, exclude)
 
 
@@ -103,19 +100,19 @@ async def locate_import(candidate,instance=None):
     fully_qualified_import = ""
     suffix = candidate
     if instance is None:
-        p = await CoqProcess.init()
+        p = CoqProcess(**kwargs)
     else:
         p = instance
     while suffix != "":
         prefix, _, suffix = suffix.partition(".")
         fully_qualified_import += prefix + "."
-        await p.run(f"Require Import {fully_qualified_import}")
+        await p.run(f"Require {fully_qualified_import}")
         if await p.locate(candidate):
             if instance is None:
-                p.kill()
+                p.close()
             return fully_qualified_import[:-1]
     if instance is None:
-        p.kill()
+        p.close()
     warnings.warn(f"couldn't find an import for {candidate}")
 
 if __name__=="__main__":
