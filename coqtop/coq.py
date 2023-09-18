@@ -22,6 +22,9 @@ class CoqProcess:
     async def run(self, proofscript, return_stderr=False):
         """ asynchronously run a coq snippet, receive stdout for that snippet """
         stdout,stderr = await self.p.call(proofscript+"\n")
+	if stdout is None:
+		warnings.warn(f"Tried to run {proofscript} but got None?!")
+		return (None,None) if return_stderr else None
         return (stdout.decode(),stderr.decode()) if return_stderr else stdout.decode()
     
     async def done(self):
