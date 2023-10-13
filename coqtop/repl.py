@@ -81,20 +81,25 @@ class REPL():
         self.stdinq = collections.deque()
         # requests not yet satisfied
         self.pendingq = collections.deque()
-        
+
+        self.pattern = re.compile(fr"<(\d+)>".encode())
+
         self.init_req = REPL.Request(self)
         self.pendingq.append(self.init_req)
         self.block_for(self.init_req)
 
 
+
+
      def call(self,text,stderr=False):
         text_bytes = text.encode()
+        # were things already pending before we made the request?
+        were_things_pending = len(self.stdinq)>0
         self.stdinq.append(struct.pack("N",len(text_bytes)) + text_bytes)
         future = self.loop.create_future() if self.is_async else None
         request = REPL.Request(self,future=future)
         self.pendingq.append(request)
-        self._sync_nonblock()
-        if len(self.stdinq)>0 and self.is_async:
+        if self.is_async and not were_things_pending:
             self.loop.add_writer(self.proc.stdin,self._async_writer)
         return request
 
@@ -124,29 +129,42 @@ class REPL():
                 sys.stdout.write("<STDERR>\n" + stderr.decode()+"\n</STDERR>\n")
                 sys.stdout.flush()
 
-        pattern = re.compile((fr"(.*?)<{self.prng.peek()}>").encode(),flags=re.S)
-        if (self.verbose):
-            print("looking for ",pattern)
 
-        m1 = pattern.match(self.stdoutq)
-        m2 = pattern.match(self.stderrq)
-
-        finished = []
-
-        #print(self.stdoutq,self.stderrq)
+        m1 = list(re.finditer(self.pattern,self.stdoutq))
+        m2 = list(re.finditer(self.pattern,self.stderrq))
         
-        while m1 is not None and m2 is not None:
+        m1_strings = [x.group(1) for x in m1]
+        m2_strings = [x.group(1) for x in m2]
+
+        found_ids = set(m1_strings).intersection(m2_strings)
+
+        if len(found_ids)>0 and self.verbose:
+            print("found",found_ids)
+
+        cursor1 = 0
+        cursor2 = 0
+        
+        finished = []
+        
+         
+        while str(self.prng.peek()).encode() in found_ids:
+            target = str(self.prng.peek()).encode()
             if (self.verbose):
                 print("match!")
-            self.prng()
+            
             # we have an entire response in memory.
             # taking care of it now.
-            result_stdout = m1.group(1)
-            result_stderr = m2.group(1)
+            m1_index = m1_strings.index(target)
+            m2_index = m2_strings.index(target)
 
-            self.stdoutq = self.stdoutq[m1.span()[1]:]
-            self.stderrq = self.stderrq[m2.span()[1]:]
+            result_stdout = self.stdoutq[cursor1:m1[m1_index].start()]
+            result_stderr = self.stderrq[cursor2:m2[m2_index].start()]
 
+            cursor1 = m1[m1_index].end()
+            cursor2 = m2[m2_index].end()
+
+            
+            self.prng()
             req = self.pendingq.popleft()
             if self.is_async:
                 req.future.set_result((result_stdout,result_stderr))
@@ -154,12 +172,9 @@ class REPL():
                 req.result = (result_stdout,result_stderr)
             
             finished.append(req)
-
-            pattern = re.compile((fr"(.*?)<{self.prng.peek()}>").encode(),flags=re.S)
-
-            m1 = pattern.match(self.stdoutq)
-            m2 = pattern.match(self.stderrq)
-       
+        
+        self.stdoutq = self.stdoutq[cursor1:]
+        self.stderrq = self.stderrq[cursor2:]
         
         try:
             while len(self.stdinq)>0:
