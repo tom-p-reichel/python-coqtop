@@ -14,6 +14,7 @@ class CoqProcess:
         self.p = REPL("coqtop",verbose=verbose)
         # TODO: make coqprocess optional async too.
         self.p.make_async()
+        self.env_regex = re.compile(r"^([^\s]+):([^\n]*\n(?:[\t\s]+[^\n]+(?:\n|$))*)",flags=re.MULTILINE)
 
     def close(self):
         self.p.close()
@@ -31,14 +32,19 @@ class CoqProcess:
         output = await self.run("Fail auto.")
         return "No such goal" in output
 
-    async def environment(self):
+    async def environment(self,definitions=False,types=False):
         """ grab a set of all (?) defined theorems (but not definitions)"""
-        thms = set()
+        thms = {}
         thm_tokens = ["Theorem","Lemma"]
+        if definitions:
+            thm_tokens.append("Definition")
         for t in thm_tokens:
             cthms = await self.run(f"Search is:{t}.")
-            thms.update(re.findall(r"^([^\s]+):",cthms, flags=re.MULTILINE))
-        return thms
+            thms.update(re.findall(self.env_regex, cthms))
+        if types:
+            return thms
+        else:
+            return set(thms.keys())
 
     async def locate(self,term):
         """ attempt to find the full path of a term """
