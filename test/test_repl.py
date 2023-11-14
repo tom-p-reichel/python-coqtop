@@ -32,7 +32,7 @@ class TestRepl(IsolatedAsyncioTestCase):
 
         for t in [test,test2,test3]:
             stamp = time.time()
-            r = REPL("coqtop")
+            r = REPL("coqtop",verbose=False)
             t(r).block()
             r = REPL("coqtop")
             r.make_async()

@@ -5,6 +5,7 @@ import glob
 from pathlib import Path
 import os
 import warnings
+import string
 from .repl import REPL
 
 class CoqProcess:
@@ -32,14 +33,19 @@ class CoqProcess:
         output = await self.run("Fail auto.")
         return "No such goal" in output
 
-    async def environment(self,definitions=False,types=False):
-        """ grab a set of all (?) defined theorems (but not definitions)"""
+    async def environment(self,types=["Theorem","Lemma","Definition","Method","Instance","Axiom"],everything=False ):
+        """ grab a set of all (?) defined things in the environment"""
         thms = {}
-        thm_tokens = ["Theorem","Lemma"]
-        if definitions:
-            thm_tokens.append("Definition")
-        for t in thm_tokens:
-            cthms = await self.run(f"Search is:{t}.")
+        
+        if everything:
+            searches = [self.run(f"Search \"{string.ascii_letters[i]}\" " + " ".join(f"-\"{string.ascii_letters[j]}\"" for j in range(i)) + ".") for i in range(len(string.ascii_letters))]
+        else:
+            searches = [self.run(f"Search is:{t}.") for t in types]
+
+        
+
+        for s in searches:
+            cthms = await s
             thms.update(re.findall(self.env_regex, cthms))
         if types:
             return thms
