@@ -167,7 +167,11 @@ class REPL():
             self.prng()
             req = self.pendingq.popleft()
             if self.is_async:
-                req.future.set_result((result_stdout,result_stderr))
+                try:
+                    req.future.set_result((result_stdout,result_stderr))
+                except aio.exceptions.InvalidStateError:
+                    # uh huh, we're just going to move on.
+                    continue
             else:
                 req.result = (result_stdout,result_stderr)
             
@@ -215,7 +219,11 @@ class REPL():
              self.loop.remove_reader(self.proc.stdout)
              self.loop.remove_reader(self.proc.stderr)
              for x in self.pendingq:
-                 x.future.set_result((None,None))
+                 try:
+                     x.future.set_result((None,None))
+                 except aio.exceptions.InvalidStateError:
+                     # this is already dead
+                     continue
 
          # this usually convinces coqtop to close.
          self.proc.stdin.close()
