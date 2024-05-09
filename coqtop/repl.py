@@ -213,7 +213,7 @@ class REPL():
                     [])
             finished = self._sync_nonblock()
 
-     def close(self):
+     def close(self,kill=False):
          if (self.is_async):
              self.loop.remove_writer(self.proc.stdin)
              self.loop.remove_reader(self.proc.stdout)
@@ -229,6 +229,8 @@ class REPL():
          self.proc.stdin.close()
          self.proc.stdout.close()
          self.proc.stderr.close()
+         if kill:
+             self.proc.kill()
          self.proc.wait()
 
 if __name__=="__main__":

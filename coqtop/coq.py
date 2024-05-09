@@ -10,15 +10,15 @@ from .repl import REPL
 
 class CoqProcess:
         
-    def __init__(self,verbose=False):
+    def __init__(self,*args,verbose=False):
         self.lock = asyncio.Lock()
-        self.p = REPL("coqtop",verbose=verbose)
+        self.p = REPL("coqtop",*args,verbose=verbose)
         # TODO: make coqprocess optional async too.
         self.p.make_async()
         self.env_regex = re.compile(r"^([^\s]+):([^\n]*\n(?:[\t\s]+[^\n]+(?:\n|$))*)",flags=re.MULTILINE)
 
-    def close(self):
-        self.p.close()
+    def close(self,**kwargs):
+        self.p.close(**kwargs)
 
 
     async def run(self, proofscript, return_stderr=False):
