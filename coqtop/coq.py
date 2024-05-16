@@ -30,8 +30,8 @@ class CoqProcess:
         return (stdout.decode(),stderr.decode()) if return_stderr else stdout.decode()
     
     async def done(self):
-        output = await self.run("Fail auto.")
-        return "No such goal" in output
+        output,stderr = await self.run("try idtac.",return_stderr=True)
+        return "Error" in stderr
 
     async def environment(self,types=["Theorem","Lemma","Definition","Method","Instance","Axiom"],everything=False ):
         """ grab a set of all (?) defined things in the environment"""

@@ -215,9 +215,15 @@ class REPL():
 
      def close(self,kill=False):
          if (self.is_async):
-             self.loop.remove_writer(self.proc.stdin)
-             self.loop.remove_reader(self.proc.stdout)
-             self.loop.remove_reader(self.proc.stderr)
+             try:
+                 self.loop.remove_reader(self.proc.stdout)
+                 self.loop.remove_reader(self.proc.stderr)
+                 self.loop.remove_writer(self.proc.stdin)
+             except ValueError:
+                 # maybe already closed???
+                 # happens when one of self.proc.* is not
+                 # currently a valid file...
+                 pass
              for x in self.pendingq:
                  try:
                      x.future.set_result((None,None))
