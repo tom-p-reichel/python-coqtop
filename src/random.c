@@ -17,7 +17,7 @@ typedef struct {
 } prng;
 
 MAYBE_STATIC void prng_init(prng* a) {
-	initstate_r(42424,&a->buf,128,&a->rd);
+	initstate_r(42424,(char*)&a->buf,128,&a->rd);
 }
 
 MAYBE_STATIC int32_t prng_pull(prng* a) {
@@ -26,7 +26,9 @@ MAYBE_STATIC int32_t prng_pull(prng* a) {
 	return out;
 }
 
-MAYBE_STATIC int prng_struct_size(){ 
+#ifdef MAKE_PUBLIC
+int prng_struct_size(){ 
 	return sizeof(prng);
 }
+#endif
 

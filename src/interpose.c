@@ -29,7 +29,6 @@ ssize_t read(int fd, void *buf, size_t count) {
 	if (fd!=STDIN_FILENO)
 		return real_read(fd,buf,count);
 
-	int32_t syncno;
 	if (chunk==0) {
 		int32_t syncno = prng_pull(&random_gen);
 		dprintf(STDOUT_FILENO,"<%d>",syncno);
