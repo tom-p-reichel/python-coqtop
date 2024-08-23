@@ -33,24 +33,12 @@ class CoqProcess:
         output,stderr = await self.run("try idtac.",return_stderr=True)
         return "Error" in stderr
 
-    async def environment(self,types=["Theorem","Lemma","Definition","Method","Instance","Axiom"],everything=False ):
+    async def environment(self):
         """ grab a set of all (?) defined things in the environment"""
+        cthms = await self.run(f"Search (?x).")
         thms = {}
-        
-        if everything:
-            searches = [self.run(f"Search \"{string.ascii_letters[i]}\" " + " ".join(f"-\"{string.ascii_letters[j]}\"" for j in range(i)) + ".") for i in range(len(string.ascii_letters))]
-        else:
-            searches = [self.run(f"Search is:{t}.") for t in types]
-
-        
-
-        for s in searches:
-            cthms = await s
-            thms.update(re.findall(self.env_regex, cthms))
-        if types:
-            return thms
-        else:
-            return set(thms.keys())
+        thms.update(re.findall(self.env_regex, cthms))
+        return thms
 
     async def locate(self,term):
         """ attempt to find the full path of a term """
